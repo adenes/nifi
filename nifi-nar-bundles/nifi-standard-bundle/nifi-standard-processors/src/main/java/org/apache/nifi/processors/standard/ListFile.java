@@ -262,6 +262,15 @@ public class ListFile extends AbstractListProcessor<FileInfo> {
         .defaultValue("3 mins")
         .build();
 
+    public static final PropertyDescriptor LIST_DIRECTORIES = new Builder()
+        .name("list-directories")
+        .displayName("List Directories")
+        .description("If set to true not only files but also directories will be listed.")
+        .allowableValues("true", "false")
+        .defaultValue("false")
+        .required(true)
+        .build();
+
 
     private List<PropertyDescriptor> properties;
     private Set<Relationship> relationships;
@@ -270,6 +279,7 @@ public class ListFile extends AbstractListProcessor<FileInfo> {
     private volatile Future<?> monitoringFuture;
 
     private volatile boolean includeFileAttributes;
+    private volatile boolean listDirectories;
     private volatile PerformanceTracker performanceTracker;
     private volatile long performanceLoggingTimestamp = System.currentTimeMillis();
     private final AtomicReference<BiPredicate<Path, BasicFileAttributes>> fileFilterRef = new AtomicReference<>();
@@ -282,6 +292,7 @@ public class ListFile extends AbstractListProcessor<FileInfo> {
     public static final String FILE_GROUP_ATTRIBUTE = "file.group";
     public static final String FILE_PERMISSIONS_ATTRIBUTE = "file.permissions";
     public static final String FILE_MODIFY_DATE_ATTR_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZ";
+    public static final String FILE_IS_DIRECTORY_ATTRIBUTE = "file.isDirectory";
 
     @Override
     protected void init(final ProcessorInitializationContext context) {
@@ -292,6 +303,7 @@ public class ListFile extends AbstractListProcessor<FileInfo> {
         properties.add(DIRECTORY_LOCATION);
         properties.add(FILE_FILTER);
         properties.add(PATH_FILTER);
+        properties.add(LIST_DIRECTORIES);
         properties.add(INCLUDE_FILE_ATTRIBUTES);
         properties.add(MIN_AGE);
         properties.add(MAX_AGE);
@@ -336,6 +348,7 @@ public class ListFile extends AbstractListProcessor<FileInfo> {
     public void onScheduled(final ProcessContext context) {
         fileFilterRef.set(createFileFilter(context));
         includeFileAttributes = context.getProperty(INCLUDE_FILE_ATTRIBUTES).asBoolean();
+        listDirectories = context.getProperty(LIST_DIRECTORIES).asBoolean();
 
         final long maxDiskOperationMillis = context.getProperty(MAX_DISK_OPERATION_TIME).evaluateAttributeExpressions().asTimePeriod(TimeUnit.MILLISECONDS);
         final long maxListingMillis = context.getProperty(MAX_LISTING_TIME).evaluateAttributeExpressions().asTimePeriod(TimeUnit.MILLISECONDS);
@@ -429,6 +442,9 @@ public class ListFile extends AbstractListProcessor<FileInfo> {
         attributes.put(CoreAttributes.ABSOLUTE_PATH.key(), absPathString);
         attributes.put(FILE_SIZE_ATTRIBUTE, Long.toString(fileInfo.getSize()));
         attributes.put(FILE_LAST_MODIFY_TIME_ATTRIBUTE, formatter.format(new Date(fileInfo.getLastModifiedTime())));
+        if (listDirectories) {
+            attributes.put(FILE_IS_DIRECTORY_ATTRIBUTE, String.valueOf(fileInfo.isDirectory()));
+        }
 
         if (includeFileAttributes) {
             final TimingInfo timingInfo = performanceTracker.getTimingInfo(relativePath.toString(), file.getName());
@@ -527,7 +543,7 @@ public class ListFile extends AbstractListProcessor<FileInfo> {
                 final TimedOperationKey operationKey = performanceTracker.beginOperation(DiskOperation.FILTER, relativePath, filename);
 
                 try {
-                    if (!isDirectory && (minTimestamp == null || attributes.lastModifiedTime().toMillis() >= minTimestamp)
+                    if ((!isDirectory || listDirectories) && (minTimestamp == null || attributes.lastModifiedTime().toMillis() >= minTimestamp)
                         && fileFilter.test(path, attributes)) {
                         // We store the attributes for each Path we are returning in order to avoid to
                         // retrieve them again later when creating the FileInfo
@@ -554,7 +570,7 @@ public class ListFile extends AbstractListProcessor<FileInfo> {
             BasicFileAttributes attributes = lastModifiedMap.get(p);
 
             final FileInfo fileInfo = new FileInfo.Builder()
-                .directory(false)
+                .directory(attributes.isDirectory())
                 .filename(file.getName())
                 .fullPathFileName(file.getAbsolutePath())
                 .lastModifiedTime(attributes.lastModifiedTime().toMillis())
