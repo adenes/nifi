@@ -25,14 +25,23 @@ import java.util.Objects;
 
 public class ChoiceDataType extends DataType {
     private final List<DataType> possibleSubTypes;
+    private final boolean nullable;
 
     public ChoiceDataType(final List<DataType> possibleSubTypes) {
+        this(possibleSubTypes, false);
+    }
+    public ChoiceDataType(final List<DataType> possibleSubTypes, boolean nullable) {
         super(RecordFieldType.CHOICE, null);
         this.possibleSubTypes = Objects.requireNonNull(possibleSubTypes);
+        this.nullable = nullable;
     }
 
     public List<DataType> getPossibleSubTypes() {
         return possibleSubTypes;
+    }
+
+    public boolean isNullable() {
+        return true;
     }
 
     @Override

@@ -311,11 +311,14 @@ public enum RecordFieldType {
      *         is not the CHOICE type.
      */
     public DataType getChoiceDataType(final List<DataType> possibleChildTypes) {
+        return getChoiceDataType(possibleChildTypes, false);
+    }
+    public DataType getChoiceDataType(final List<DataType> possibleChildTypes, boolean nullable) {
         if (this != CHOICE) {
             return null;
         }
 
-        return new ChoiceDataType(possibleChildTypes);
+        return new ChoiceDataType(possibleChildTypes, nullable);
     }
 
     /**

@@ -406,8 +406,9 @@ public class AvroTypeUtil {
                 return RecordFieldType.MAP.getMapDataType(valueType);
             case UNION: {
                 final List<Schema> nonNullSubSchemas = getNonNullSubSchemas(avroSchema);
+                final boolean nullable = isNullable(avroSchema);
 
-                if (nonNullSubSchemas.size() == 1) {
+                if (!nullable && nonNullSubSchemas.size() == 1) {
                     return determineDataType(nonNullSubSchemas.get(0), knownRecordTypes);
                 }
 
@@ -417,7 +418,7 @@ public class AvroTypeUtil {
                     possibleChildTypes.add(childDataType);
                 }
 
-                return RecordFieldType.CHOICE.getChoiceDataType(possibleChildTypes);
+                return RecordFieldType.CHOICE.getChoiceDataType(possibleChildTypes, nullable);
             }
         }
 
