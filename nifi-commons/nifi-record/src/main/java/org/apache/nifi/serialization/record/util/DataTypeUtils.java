@@ -49,6 +49,7 @@ import java.sql.Types;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1074,8 +1075,7 @@ public class DataTypeUtils {
                 if (dateFormat == null) {
                     return new Date(Long.parseLong(string));
                 }
-                final java.util.Date utilDate = dateFormat.parse(string);
-                return new Date(utilDate.getTime());
+                return Date.valueOf(dateFormat.parse(string).toInstant().atZone(ZoneOffset.UTC).toLocalDate());
             } catch (final ParseException | NumberFormatException e) {
                 throw new IllegalTypeConversionException("Could not convert value [" + value
                     + "] of type java.lang.String to Date because the value is not in the expected date format: " + format + " for field " + fieldName);
