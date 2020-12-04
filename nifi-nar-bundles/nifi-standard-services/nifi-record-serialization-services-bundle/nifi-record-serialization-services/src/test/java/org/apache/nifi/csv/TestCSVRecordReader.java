@@ -44,8 +44,9 @@ import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.Month;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.TimeZone;
@@ -111,12 +112,11 @@ public class TestCSVRecordReader {
 
                 final Record record = reader.nextRecord(coerceTypes, false);
                 final java.sql.Date date = (Date) record.getValue("date");
-                final Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("gmt"));
-                calendar.setTimeInMillis(date.getTime());
+                LocalDate localDate = date.toLocalDate();
 
-                assertEquals(1983, calendar.get(Calendar.YEAR));
-                assertEquals(10, calendar.get(Calendar.MONTH));
-                assertEquals(30, calendar.get(Calendar.DAY_OF_MONTH));
+                assertEquals(1983, localDate.getYear());
+                assertEquals(Month.NOVEMBER, localDate.getMonth());
+                assertEquals(30, localDate.getDayOfMonth());
             }
         }
     }
@@ -155,12 +155,11 @@ public class TestCSVRecordReader {
 
             final Record record = reader.nextRecord(false, false);
             final java.sql.Date date = (Date) record.getValue("date");
-            final Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("gmt"));
-            calendar.setTimeInMillis(date.getTime());
+            LocalDate localDate = date.toLocalDate();
 
-            assertEquals(1983, calendar.get(Calendar.YEAR));
-            assertEquals(10, calendar.get(Calendar.MONTH));
-            assertEquals(30, calendar.get(Calendar.DAY_OF_MONTH));
+            assertEquals(1983, localDate.getYear());
+            assertEquals(Month.NOVEMBER, localDate.getMonth());
+            assertEquals(30, localDate.getDayOfMonth());
         }
     }
 

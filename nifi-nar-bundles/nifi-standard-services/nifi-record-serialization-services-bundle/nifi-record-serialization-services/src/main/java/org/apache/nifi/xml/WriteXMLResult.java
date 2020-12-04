@@ -46,6 +46,7 @@ import java.util.Deque;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -105,7 +106,7 @@ public class WriteXMLResult extends AbstractRecordSetWriter implements RecordSet
         this.allowWritingMultipleRecords = !(this.rootTagName == null);
         hasWrittenRecord = false;
 
-        final DateFormat df = dateFormat == null ? null : DataTypeUtils.getDateFormat(dateFormat);
+        final DateFormat df = dateFormat == null ? null : DataTypeUtils.getDateFormat(dateFormat, TimeZone.getDefault().getID());
         final DateFormat tf = timeFormat == null ? null : DataTypeUtils.getDateFormat(timeFormat);
         final DateFormat tsf = timestampFormat == null ? null : DataTypeUtils.getDateFormat(timestampFormat);
 

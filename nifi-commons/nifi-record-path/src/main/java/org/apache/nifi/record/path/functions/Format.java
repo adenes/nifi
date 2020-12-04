@@ -24,6 +24,7 @@ import org.apache.nifi.record.path.util.RecordPathUtils;
 import org.apache.nifi.serialization.record.util.DataTypeUtils;
 import org.apache.nifi.util.StringUtils;
 
+import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.stream.Stream;
 
@@ -61,7 +62,7 @@ public class Format extends RecordPathSegment {
                         return fv;
                     }
 
-                    final Date dateValue = DataTypeUtils.toDate(fv.getValue(), null, fv.getField().getFieldName());
+                    final Date dateValue = DataTypeUtils.toTimestamp(fv.getValue(), null, fv.getField().getFieldName());
                     final String formatted = dateFormat.format(dateValue);
                     return new StandardFieldValue(formatted, fv.getField(), fv.getParent().orElse(null));
                 });
@@ -75,7 +76,7 @@ public class Format extends RecordPathSegment {
 
         try {
             if (timeZoneID == null) {
-                return DataTypeUtils.getDateFormat(dateFormatString);
+                return DataTypeUtils.getDateFormat(dateFormatString, ZoneOffset.UTC.getId());
             } else {
                 final String timeZoneStr = RecordPathUtils.getFirstStringValue(timeZoneID, context);
                 if (StringUtils.isEmpty(timeZoneStr)) {

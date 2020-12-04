@@ -37,10 +37,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Date;
+import java.time.LocalDate;
+import java.time.Month;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
-import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -97,12 +97,11 @@ public class TestJacksonCSVRecordReader {
 
             final Record record = reader.nextRecord();
             final Date date = (Date) record.getValue("date");
-            final Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("gmt"));
-            calendar.setTimeInMillis(date.getTime());
+            LocalDate localDate = date.toLocalDate();
 
-            assertEquals(1983, calendar.get(Calendar.YEAR));
-            assertEquals(10, calendar.get(Calendar.MONTH));
-            assertEquals(30, calendar.get(Calendar.DAY_OF_MONTH));
+            assertEquals(1983, localDate.getYear());
+            assertEquals(Month.NOVEMBER, localDate.getMonth());
+            assertEquals(30, localDate.getDayOfMonth());
         }
     }
 
