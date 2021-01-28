@@ -17,6 +17,7 @@
 package org.apache.nifi.processors.standard;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.input.CountingInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.InputRequirement.Requirement;
@@ -55,6 +56,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -1172,9 +1174,10 @@ public class TailFile extends AbstractProcessor {
                 final File firstFile = rolledOffFiles.get(0);
 
                 final long startNanos = System.nanoTime();
+                final boolean reReadOnNul = context.getProperty(REREAD_ON_NUL).asBoolean();
                 if (position > 0) {
                     try (final InputStream fis = new FileInputStream(firstFile);
-                            final CheckedInputStream in = new CheckedInputStream(fis, new CRC32())) {
+                            final CheckedInputStream in = new CheckedInputStream(new NulCheckerInputStream(new CountingInputStream(fis), reReadOnNul), new CRC32())) {
                         StreamUtils.copy(in, new NullOutputStream(), position);
 
                         final long checksumResult = in.getChecksum().getValue();
@@ -1184,7 +1187,13 @@ public class TailFile extends AbstractProcessor {
                             // This is the same file that we were reading when we shutdown. Start reading from this point on.
                             rolledOffFiles.remove(0);
                             FlowFile flowFile = session.create();
-                            flowFile = session.importFrom(in, flowFile);
+                            try {
+                                flowFile = session.importFrom(in, flowFile);
+                            } catch (NulCharacterEncounteredException ncee) {
+                                rolledOffFiles.add(0, firstFile);
+                                session.remove(flowFile);
+                                throw ncee;
+                            }
                             if (flowFile.getSize() == 0L) {
                                 session.remove(flowFile);
                                 // use a timestamp of lastModified() + 1 so that we do not ingest this file again.
@@ -1228,6 +1237,38 @@ public class TailFile extends AbstractProcessor {
         } catch (final IOException e) {
             getLogger().error("Failed to recover files that have rolled over due to {}", new Object[]{e});
             return false;
+        }
+    }
+
+    private static class NulCheckerInputStream extends FilterInputStream {
+
+        private final CountingInputStream countingInputStream;
+        private final boolean checkForNul;
+        protected NulCheckerInputStream(CountingInputStream in, boolean checkForNul) {
+            super(in);
+            this.countingInputStream = in;
+            this.checkForNul = checkForNul;
+        }
+
+        @Override
+        public int read() throws IOException {
+            int ret = super.read();
+            if (checkForNul && ret == 0) throw new NulCharacterEncounteredException(countingInputStream.getByteCount());
+            return ret;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            final long startPos = countingInputStream.getByteCount();
+            final int ret = super.read(b, off, len);
+            if (checkForNul) {
+                for (int i = 0; i < ret; i++) {
+                    if (b[off + i] == 0) {
+                        throw new NulCharacterEncounteredException(startPos + i);
+                    }
+                }
+            }
+            return ret;
         }
     }
 
